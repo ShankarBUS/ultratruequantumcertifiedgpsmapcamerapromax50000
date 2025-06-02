@@ -34,7 +34,14 @@ async function startCamera(facingMode) {
     currentStream.getTracks().forEach(track => track.stop());
   }
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+    const constraints = {
+      video: {
+        facingMode,
+        width: { ideal: 4096 },
+        height: { ideal: 2160 } 
+      }
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     currentStream = stream;
     setVideoMirror(facingMode);
@@ -163,26 +170,28 @@ captureBtn.addEventListener('click', async () => {
 
   // Draw banner as rounded rect
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  const bannerRadius = 10;
+  const bannerRadius = Math.round(canvas.width * 0.0156); // 10 for 640px
   const bannerY = canvas.height - bannerHeight - (bannerYPad * 2)
   drawRoundedRect(ctx, bannerX, bannerY, bannerWidth, bannerHeight + bannerYPad, { tl: bannerRadius, tr: 0, br: bannerRadius, bl: bannerRadius });
 
   // Draw small top-left banner with icon and text
-  const topBannerHeight = 28;
-  const topBannerWidth = 120;
+  const topBannerHeight = Math.round(canvas.width * 0.044); // 28 for 640px
+  const topBannerWidth = Math.round(canvas.width * 0.188); // 120 for 640px
   const topBannerX = bannerX + bannerWidth - topBannerWidth;
   const topBannerY = bannerY - topBannerHeight;
-  const topBannerRadius = 6;
+  const topBannerRadius = Math.round(canvas.width * 0.0094); // 6 for 640px
+  const iconPadding = Math.round(canvas.width * 0.00625); // 4 for 640px
+  const iconHeight = Math.round(canvas.width * 0.03125); // 20 for 640px
   drawRoundedRect(ctx, topBannerX, topBannerY, topBannerWidth, topBannerHeight, { tl: topBannerRadius, tr: topBannerRadius, br: 0, bl: 0 });
 
   const iconImg = new Image();
   iconImg.src = 'icon.png';
   iconImg.onload = function() {
-    ctx.drawImage(iconImg, topBannerX + 4, topBannerY + 4, 20, 20);
+    ctx.drawImage(iconImg, topBannerX + iconPadding, topBannerY + iconPadding, iconHeight, iconHeight);
     ctx.font = `bold ${Math.round(canvas.width * 0.015)}px Arial`;
     ctx.fillStyle = '#fff';
     ctx.textBaseline = 'middle';
-    ctx.fillText('GPS Map Camera', topBannerX + 28, topBannerY + topBannerHeight / 2);
+    ctx.fillText('GPS Map Camera', topBannerX + topBannerHeight, topBannerY + topBannerHeight / 2);
     // Draw text for main banner (after icon loads)
     ctx.fillStyle = '#fff';
     let y = canvas.height - bannerHeight - bannerYPad + (padding * 2);
