@@ -28,12 +28,20 @@
       </svg>
     </button>
   </div>
-
+  <div id="video-info-bar">
+    <span id="videoResolutionLabel">Resolution: -- x --</span>
+  </div>
   <div id="settingsPopup" class="popup hidden">
     <div class="popup-content">
       <button id="closeSettings" class="close-btn">&times;</button>
       <h2>Settings</h2>
       <div class="settings-fields">
+        <div class="input-group">
+          <label for="locationPresets">Location Presets</label>
+          <select id="locationPresets">
+            <option value="">-- Select a preset --</option>
+          </select>
+        </div>
         <div class="input-group">
           <label for="address-line1">Address Line 1</label>
           <input id="address-line1" type="text" placeholder="Address line 1" autocomplete="off" />
@@ -56,6 +64,11 @@
           <label for="datetime">Date & Time</label>
           <input type="datetime-local" id="datetime" />
         </div>
+      </div>
+      <div class="popup-actions">
+        <button id="saveSettingsBtn" class="action-button">Save</button>
+        <button id="addPresetBtn" class="action-button">Add to Presets</button>
+        <button id="cancelSettingsBtn" class="action-button">Cancel</button>
       </div>
     </div>
   </div>

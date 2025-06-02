@@ -16,11 +16,18 @@ const latitudeInput = document.getElementById('latitude');
 const longitudeInput = document.getElementById('longitude');
 const datetimeInput = document.getElementById('datetime');
 const flipCameraBtn = document.getElementById('flipCameraBtn');
+const videoResolutionLabel = document.getElementById('videoResolutionLabel');
+const locationPresets = document.getElementById('locationPresets');
+const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+const addPresetBtn = document.getElementById('addPresetBtn');
+const cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
 
 let lat = null, lng = null;
 let addl1 = 'Place, State, Country', addl2 = 'Place, City Pin, State, Country', timezone = 'GMT +05:30';
 let currentFacingMode = 'user';
 let currentStream = null;
+let settingsBackup = {};
+let locationPresetsList = JSON.parse(localStorage.getItem('locationPresetsList') || '[]');
 
 async function startCamera(facingMode) {
   if (currentStream) {
@@ -30,6 +37,7 @@ async function startCamera(facingMode) {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
     video.srcObject = stream;
     currentStream = stream;
+    setVideoMirror(facingMode);
   } catch (e) {
     alert('Camera access denied or not available.');
   }
@@ -92,7 +100,32 @@ function getBannerHeight(wrappedLines, padding) {
   return wrappedLines.reduce((sum, l) => sum + l.lineHeight, 2 * padding);
 }
 
+function updateVideoResolutionLabel() {
+  let w = video.videoWidth;
+  let h = video.videoHeight;
+  let orientation = (w > h) ? 'Landscape' : (h > w ? 'Portrait' : 'Square');
+  videoResolutionLabel.textContent = `Resolution: ${w} x ${h} (${orientation})`;
+}
+
+function updatePresetsDropdown() {
+  locationPresets.innerHTML = '<option value="">-- Select a preset --</option>';
+  locationPresetsList.forEach((preset, idx) => {
+    const opt = document.createElement('option');
+    opt.value = idx;
+    opt.textContent = preset.name || `${preset.address1}, ${preset.address2}`;
+    locationPresets.appendChild(opt);
+  });
+}
+
+function applyPresetToFields(preset) {
+  addressLine1Input.value = preset.address1 || '';
+  addressLine2Input.value = preset.address2 || '';
+  latitudeInput.value = preset.latitude || '';
+  longitudeInput.value = preset.longitude || '';
+}
+
 captureBtn.addEventListener('click', async () => {
+  setVideoMirror('none'); // Remove mirror for capture
   const ctx = canvas.getContext('2d');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
@@ -166,6 +199,7 @@ captureBtn.addEventListener('click', async () => {
   };
   // Prevent drawing text before icon loads
   if (!iconImg.complete) return;
+  setVideoMirror(currentFacingMode); // Restore mirror after capture
 });
 
 // Download link is handled by href
@@ -197,6 +231,15 @@ shareBtn.addEventListener('click', async () => {
 
 // Settings Popup
 settingsBtn.addEventListener('click', () => {
+  // Backup current values
+  settingsBackup = {
+    address1: addressLine1Input.value,
+    address2: addressLine2Input.value,
+    latitude: latitudeInput.value,
+    longitude: longitudeInput.value,
+    datetime: datetimeInput.value
+  };
+  updatePresetsDropdown();
   settingsPopup.classList.remove('hidden');
 });
 closeSettings.addEventListener('click', () => {
@@ -210,6 +253,61 @@ flipCameraBtn.addEventListener('click', () => {
   currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
   startCamera(currentFacingMode);
 });
+
+locationPresets.addEventListener('change', () => {
+  const idx = locationPresets.value;
+  if (idx !== '' && locationPresetsList[idx]) {
+    applyPresetToFields(locationPresetsList[idx]);
+  }
+});
+
+addPresetBtn.addEventListener('click', () => {
+  const preset = {
+    name: `${addressLine1Input.value} | ${addressLine2Input.value}`,
+    address1: addressLine1Input.value,
+    address2: addressLine2Input.value,
+    latitude: latitudeInput.value,
+    longitude: longitudeInput.value
+  };
+  locationPresetsList.push(preset);
+  localStorage.setItem('locationPresetsList', JSON.stringify(locationPresetsList));
+  updatePresetsDropdown();
+});
+
+saveSettingsBtn.addEventListener('click', () => {
+  addl1 = addressLine1Input.value;
+  addl2 = addressLine2Input.value;
+  lat = latitudeInput.value;
+  lng = longitudeInput.value;
+  settingsPopup.classList.add('hidden');
+});
+
+cancelSettingsBtn.addEventListener('click', () => {
+  // Revert to backup
+  addressLine1Input.value = settingsBackup.address1;
+  addressLine2Input.value = settingsBackup.address2;
+  latitudeInput.value = settingsBackup.latitude;
+  longitudeInput.value = settingsBackup.longitude;
+  datetimeInput.value = settingsBackup.datetime;
+  settingsPopup.classList.add('hidden');
+});
+
+// Video orientation and resolution update
+video.addEventListener('loadedmetadata', updateVideoResolutionLabel);
+window.addEventListener('resize', updateVideoResolutionLabel);
+
+// Flip video preview for selfie (user) only
+function setVideoMirror(facingMode) {
+  if (facingMode === 'user') {
+    video.style.transform = 'scaleX(-1)';
+  } else {
+    video.style.transform = '';
+  }
+}
+
+// On load, update presets and video label
+updatePresetsDropdown();
+updateVideoResolutionLabel();
 
 // Replace initial camera start with function call
 startCamera(currentFacingMode);
