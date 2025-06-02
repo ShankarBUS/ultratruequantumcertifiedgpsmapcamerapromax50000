@@ -19,7 +19,7 @@ const flipCameraBtn = document.getElementById('flipCameraBtn');
 
 let lat = null, lng = null;
 let addl1 = 'Place, State, Country', addl2 = 'Place, City Pin, State, Country', timezone = 'GMT +05:30';
-let currentFacingMode = 'environment';
+let currentFacingMode = 'user';
 let currentStream = null;
 
 async function startCamera(facingMode) {
@@ -70,10 +70,10 @@ function drawRoundedRect(ctx, x, y, width, height, radii) {
   ctx.fill();
 }
 
-function getBannerLines(ctx, address1, address2, latVal, lngVal, dateStr, timeStr, tz, maxTextWidth, canvasHeight) {
-  const address1Font = `${Math.round(canvasHeight * 0.05)}px Arial`;
-  const normalFont = `${Math.round(canvasHeight * 0.03)}px Arial`;
-  const lineHeight = Math.round(canvasHeight * 0.035);
+function getBannerLines(ctx, address1, address2, latVal, lngVal, dateStr, timeStr, tz, maxTextWidth, canvasWidth) {
+  const address1Font = `${Math.round(canvasWidth * 0.025)}px Arial`;
+  const normalFont = `${Math.round(canvasWidth * 0.02)}px Arial`;
+  const lineHeight = Math.round(canvasWidth * 0.025);
   let wrappedLines = [];
 
   ctx.font = address1Font;
@@ -125,35 +125,34 @@ captureBtn.addEventListener('click', async () => {
   const tz = 'GST +5:30';
 
   // Prepare lines and banner height
-  const wrappedLines = getBannerLines(ctx, address1, address2, latVal, lngVal, dateStr, timeStr, tz, maxTextWidth, canvas.height);
+  const wrappedLines = getBannerLines(ctx, address1, address2, latVal, lngVal, dateStr, timeStr, tz, maxTextWidth, canvas.width);
   const bannerHeight = getBannerHeight(wrappedLines, padding);
 
   // Draw banner as rounded rect
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
   const bannerRadius = 10;
-  const bannerY = canvas.height - bannerHeight - bannerYPad - 10
-  drawRoundedRect(ctx, bannerX, bannerY, bannerWidth, bannerHeight + 10, { tl: bannerRadius, tr: 0, br: bannerRadius, bl: bannerRadius });
+  const bannerY = canvas.height - bannerHeight - (bannerYPad * 2)
+  drawRoundedRect(ctx, bannerX, bannerY, bannerWidth, bannerHeight + bannerYPad, { tl: bannerRadius, tr: 0, br: bannerRadius, bl: bannerRadius });
 
   // Draw small top-left banner with icon and text
-  const topBannerHeight = 36;
-  const topBannerWidth = 190;
+  const topBannerHeight = 28;
+  const topBannerWidth = 120;
   const topBannerX = bannerX + bannerWidth - topBannerWidth;
   const topBannerY = bannerY - topBannerHeight;
   const topBannerRadius = 6;
   drawRoundedRect(ctx, topBannerX, topBannerY, topBannerWidth, topBannerHeight, { tl: topBannerRadius, tr: topBannerRadius, br: 0, bl: 0 });
 
-  // Draw icon.png (24x24) and text in the top banner
   const iconImg = new Image();
   iconImg.src = 'icon.png';
   iconImg.onload = function() {
-    ctx.drawImage(iconImg, topBannerX + 6, topBannerY + 6, 24, 24);
-    ctx.font = `bold ${Math.round(canvas.height * 0.035)}px Arial`;
+    ctx.drawImage(iconImg, topBannerX + 4, topBannerY + 4, 20, 20);
+    ctx.font = `bold ${Math.round(canvas.width * 0.015)}px Arial`;
     ctx.fillStyle = '#fff';
     ctx.textBaseline = 'middle';
-    ctx.fillText('GPS Map Camera', topBannerX + 36, topBannerY + topBannerHeight / 2);
+    ctx.fillText('GPS Map Camera', topBannerX + 28, topBannerY + topBannerHeight / 2);
     // Draw text for main banner (after icon loads)
     ctx.fillStyle = '#fff';
-    let y = canvas.height - bannerHeight - bannerYPad + padding + 10;
+    let y = canvas.height - bannerHeight - bannerYPad + (padding * 2);
     wrappedLines.forEach(lineObj => {
       ctx.font = lineObj.font;
       ctx.fillText(lineObj.text, bannerX + padding, y);
