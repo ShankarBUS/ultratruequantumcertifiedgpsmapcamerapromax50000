@@ -34,13 +34,16 @@ async function startCamera(facingMode) {
     currentStream.getTracks().forEach(track => track.stop());
   }
   try {
-    const constraints = {
-      video: {
-        facingMode,
-        width: { ideal: 4096 },
-        height: { ideal: 2160 } 
-      }
-    };
+    // Use the best available resolution for the selected video source
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    let constraints = { video: { facingMode } };
+    // Try to use the highest supported resolution for the selected camera
+    if (videoDevices.length > 0) {
+      // Use 4K if available, fallback to 1080p, then default
+      constraints.video.width = { ideal: 3840, max: 4096 };
+      constraints.video.height = { ideal: 2160, max: 2160 };
+    }
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     currentStream = stream;
@@ -139,9 +142,9 @@ captureBtn.addEventListener('click', async () => {
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
   ctx.textBaseline = 'top';
-  const padding = 10;
-  const bannerX = 10;
-  const bannerYPad = 10;
+  const padding = Math.round(canvas.width * 0.0156); // 10 for 640px
+  const bannerX = padding;
+  const bannerYPad = padding;
   const bannerWidth = canvas.width - 2 * bannerX;
   const maxTextWidth = bannerWidth - 2 * padding;
 
@@ -170,7 +173,7 @@ captureBtn.addEventListener('click', async () => {
 
   // Draw banner as rounded rect
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  const bannerRadius = Math.round(canvas.width * 0.0156); // 10 for 640px
+  const bannerRadius = padding;
   const bannerY = canvas.height - bannerHeight - (bannerYPad * 2)
   drawRoundedRect(ctx, bannerX, bannerY, bannerWidth, bannerHeight + bannerYPad, { tl: bannerRadius, tr: 0, br: bannerRadius, bl: bannerRadius });
 
