@@ -1,68 +1,28 @@
 // DOM Elements
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const captureBtn = document.getElementById('captureBtn');
-const settingsBtn = document.getElementById('settingsBtn');
-const settingsPopup = document.getElementById('settingsPopup');
-const closeSettings = document.getElementById('closeSettings');
-const imagePopup = document.getElementById('imagePopup');
-const closeImage = document.getElementById('closeImage');
-const capturedImage = document.getElementById('capturedImage');
-const downloadLink = document.getElementById('downloadLink');
+const canvas = document.getElementById('renderCanvas');
+const downloadBtn = document.getElementById('downloadBtn');
 const shareBtn = document.getElementById('shareBtn');
 const addressLine1Input = document.getElementById('address-line1');
 const addressLine2Input = document.getElementById('address-line2');
 const latitudeInput = document.getElementById('latitude');
 const longitudeInput = document.getElementById('longitude');
 const datetimeInput = document.getElementById('datetime');
-const flipCameraBtn = document.getElementById('flipCameraBtn');
-const videoResolutionLabel = document.getElementById('videoResolutionLabel');
 const locationPresets = document.getElementById('locationPresets');
-const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const addPresetBtn = document.getElementById('addPresetBtn');
-const cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
+const fileInput = document.getElementById('fileInput');
+const generateBtn = document.getElementById('generateBtn');
 
-let lat = null, lng = null;
-let addl1 = 'Place, State, Country', addl2 = 'Place, City Pin, State, Country', timezone = 'GMT +05:30';
-let currentFacingMode = 'user';
-let currentStream = null;
-let settingsBackup = {};
+let addl1 = 'Place, State, Country', addl2 = 'Place, City Pin, State, Country';
 let locationPresetsList = JSON.parse(localStorage.getItem('locationPresetsList') || '[]');
-
-async function startCamera(facingMode) {
-  if (currentStream) {
-    currentStream.getTracks().forEach(track => track.stop());
-  }
-  try {
-    // Use the best available resolution for the selected video source
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
-    let constraints = { video: { facingMode } };
-    // Try to use the highest supported resolution for the selected camera
-    if (videoDevices.length > 0) {
-      // Use 4K if available, fallback to 1080p, then default
-      constraints.video.width = { ideal: 3840, max: 4096 };
-      constraints.video.height = { ideal: 2160, max: 2160 };
-    }
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = stream;
-    currentStream = stream;
-    setVideoMirror(facingMode);
-  } catch (e) {
-    alert('Camera access denied or not available.');
-  }
-}
+let lastImage = null;
 
 function wrapText(ctx, text, maxWidth) {
   const words = text.split(' ');
-  let lines = [];
-  let line = '';
+  let lines = [], line = '';
   for (let n = 0; n < words.length; n++) {
     const testLine = line + (line ? ' ' : '') + words[n];
-    const metrics = ctx.measureText(testLine);
-    if (metrics.width > maxWidth && line) {
-      lines.push(line);
-      line = words[n];
+    if (ctx.measureText(testLine).width > maxWidth && line) {
+      lines.push(line); line = words[n];
     } else {
       line = testLine;
     }
@@ -71,9 +31,8 @@ function wrapText(ctx, text, maxWidth) {
   return lines;
 }
 
-function drawRoundedRect(ctx, x, y, width, height, radii) {
-  // radii: {tl: number, tr: number, br: number, bl: number}
-  const { tl, tr, br, bl } = typeof radii === 'object' ? radii : { tl: radii, tr: radii, br: radii, bl: radii };
+function drawRoundedRect(ctx, x, y, width, height, r) {
+  const { tl, tr, br, bl } = typeof r === 'object' ? r : { tl: r, tr: r, br: r, bl: r };
   ctx.beginPath();
   ctx.moveTo(x + tl, y);
   ctx.lineTo(x + width - tr, y);
@@ -88,20 +47,16 @@ function drawRoundedRect(ctx, x, y, width, height, radii) {
   ctx.fill();
 }
 
-function getBannerLines(ctx, address1, address2, latVal, lngVal, dateStr, timeStr, tz, maxTextWidth, canvasWidth) {
-  const address1Font = `${Math.round(canvasWidth * 0.025)}px Arial`;
-  const normalFont = `${Math.round(canvasWidth * 0.02)}px Arial`;
-  const lineHeight = Math.round(canvasWidth * 0.025);
+function getBannerLines(ctx, address1, address2, latVal, lngVal, dateStr, timeStr, tz, maxTextWidth, w) {
+  const address1Font = `${Math.round(w * 0.03)}px Roboto`;
+  const normalFont = `${Math.round(w * 0.02)}px Roboto`;
+  const lineHeight = Math.round(w * 0.025);
   let wrappedLines = [];
-
   ctx.font = address1Font;
-  const address1Wrapped = wrapText(ctx, address1, maxTextWidth).map(line => ({ text: line, font: address1Font, lineHeight: lineHeight * 1.5 }));
-  wrappedLines = wrappedLines.concat(address1Wrapped);
-
+  wrappedLines = wrappedLines.concat(wrapText(ctx, address1, maxTextWidth).map(line => ({ text: line, font: address1Font, lineHeight: lineHeight * 1.5 })));
   ctx.font = normalFont;
   [address2, `Lat ${latVal}°, Long ${lngVal}°`, `${dateStr} ${timeStr} ${tz}`].forEach(line => {
-    const linesWrapped = wrapText(ctx, line, maxTextWidth).map(l => ({ text: l, font: normalFont, lineHeight: lineHeight }));
-    wrappedLines = wrappedLines.concat(linesWrapped);
+    wrappedLines = wrappedLines.concat(wrapText(ctx, line, maxTextWidth).map(l => ({ text: l, font: normalFont, lineHeight: lineHeight })));
   });
   return wrappedLines;
 }
@@ -110,21 +65,15 @@ function getBannerHeight(wrappedLines, padding) {
   return wrappedLines.reduce((sum, l) => sum + l.lineHeight, 2 * padding);
 }
 
-function updateVideoResolutionLabel() {
-  let w = video.videoWidth;
-  let h = video.videoHeight;
-  let orientation = (w > h) ? 'Landscape' : (h > w ? 'Portrait' : 'Square');
-  videoResolutionLabel.textContent = `Resolution: ${w} x ${h} (${orientation})`;
-}
-
 function updatePresetsDropdown() {
   locationPresets.innerHTML = '<option value="">-- Select a preset --</option>';
-  locationPresetsList.forEach((preset, idx) => {
+  for (let idx = 0; idx < locationPresetsList.length; idx++) {
+    const preset = locationPresetsList[idx];
     const opt = document.createElement('option');
     opt.value = idx;
     opt.textContent = preset.name || `${preset.address1}, ${preset.address2}`;
     locationPresets.appendChild(opt);
-  });
+  }
 }
 
 function applyPresetToFields(preset) {
@@ -134,105 +83,112 @@ function applyPresetToFields(preset) {
   longitudeInput.value = preset.longitude || '';
 }
 
-captureBtn.addEventListener('click', async () => {
-  setVideoMirror('none'); // Remove mirror for capture
+fileInput.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      lastImage = img;
+      canvas.width = img.width;
+      canvas.height = img.height;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+generateBtn.addEventListener('click', () => {
+  if (!lastImage) return;
+  canvas.width = lastImage.width;
+  canvas.height = lastImage.height;
   const ctx = canvas.getContext('2d');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(lastImage, 0, 0, canvas.width, canvas.height);
+  drawOverlay(ctx, canvas.width, canvas.height);
+});
 
+function drawOverlay(ctx, width, height) {
   ctx.textBaseline = 'top';
-  const padding = Math.round(canvas.width * 0.0156); // 10 for 640px
-  const bannerX = padding;
-  const bannerYPad = padding;
-  const bannerWidth = canvas.width - 2 * bannerX;
-  const maxTextWidth = bannerWidth - 2 * padding;
-
+  const padding = Math.round(width * 0.0156);
+  const bannerX = padding, bannerYPad = padding;
+  const bannerWidth = width - 2 * bannerX, maxTextWidth = bannerWidth - 2 * padding;
   const address1 = addressLine1Input.value || addl1;
   const address2 = addressLine2Input.value || addl2;
   const latVal = latitudeInput.value || 'N/A';
   const lngVal = longitudeInput.value || 'N/A';
   const dt = datetimeInput.value ? new Date(datetimeInput.value) : new Date();
-  // Format date as DD/MM/YYYY
   const day = String(dt.getDate()).padStart(2, '0');
   const month = String(dt.getMonth() + 1).padStart(2, '0');
   const year = dt.getFullYear();
   const dateStr = `${day}/${month}/${year}`;
-  // Format time as hh:mm AM/PM
   let hours = dt.getHours();
   const minutes = String(dt.getMinutes()).padStart(2, '0');
   const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; // the hour '0' should be '12'
+  hours = hours % 12; hours = hours ? hours : 12;
   const timeStr = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
   const tz = 'GST +5:30';
-
-  // Prepare lines and banner height
-  const wrappedLines = getBannerLines(ctx, address1, address2, latVal, lngVal, dateStr, timeStr, tz, maxTextWidth, canvas.width);
+  const wrappedLines = getBannerLines(ctx, address1, address2, latVal, lngVal, dateStr, timeStr, tz, maxTextWidth, width);
   const bannerHeight = getBannerHeight(wrappedLines, padding);
-
-  // Draw banner as rounded rect
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  const bannerRadius = padding;
-  const bannerY = canvas.height - bannerHeight - (bannerYPad * 2)
-  drawRoundedRect(ctx, bannerX, bannerY, bannerWidth, bannerHeight + bannerYPad, { tl: bannerRadius, tr: 0, br: bannerRadius, bl: bannerRadius });
-
-  // Draw small top-left banner with icon and text
-  const topBannerHeight = Math.round(canvas.width * 0.044); // 28 for 640px
-  const topBannerWidth = Math.round(canvas.width * 0.188); // 120 for 640px
+  const bannerRadius = padding / 2;
+  const bannerY = height - bannerHeight - (bannerYPad * 1.5);
+  drawRoundedRect(ctx, bannerX, bannerY, bannerWidth, bannerHeight + (bannerYPad / 2), { tl: bannerRadius, tr: 0, br: bannerRadius, bl: bannerRadius });
+  
+  const appBannerFont = `${Math.round(width * 0.015)}px Roboto Black`;
+  const topBannerHeight = Math.round(width * 0.044);
+  // Calculate topBannerWidth based on app name width
+  ctx.font = appBannerFont;
+  const appName = 'GPS Map Camera';
+  const iconPadding = Math.round(width * 0.00625);
+  const iconHeight = Math.round(width * 0.03125);
+  const textWidth = ctx.measureText(appName).width;
+  const topBannerWidth = iconPadding + iconHeight + iconPadding + textWidth + iconPadding;
   const topBannerX = bannerX + bannerWidth - topBannerWidth;
   const topBannerY = bannerY - topBannerHeight;
-  const topBannerRadius = Math.round(canvas.width * 0.0094); // 6 for 640px
-  const iconPadding = Math.round(canvas.width * 0.00625); // 4 for 640px
-  const iconHeight = Math.round(canvas.width * 0.03125); // 20 for 640px
+  const topBannerRadius = padding / 4;
   drawRoundedRect(ctx, topBannerX, topBannerY, topBannerWidth, topBannerHeight, { tl: topBannerRadius, tr: topBannerRadius, br: 0, bl: 0 });
-
   const iconImg = new Image();
-  iconImg.src = 'icon.png';
+  iconImg.src = 'UTQCGPSMCPM5k.png';
   iconImg.onload = function() {
     ctx.drawImage(iconImg, topBannerX + iconPadding, topBannerY + iconPadding, iconHeight, iconHeight);
-    ctx.font = `bold ${Math.round(canvas.width * 0.015)}px Arial`;
+    ctx.font = appBannerFont;
     ctx.fillStyle = '#fff';
     ctx.textBaseline = 'middle';
-    ctx.fillText('GPS Map Camera', topBannerX + topBannerHeight, topBannerY + topBannerHeight / 2);
-    // Draw text for main banner (after icon loads)
+    ctx.fillText(appName, topBannerX + iconPadding + iconHeight + iconPadding, topBannerY + topBannerHeight / 2);
     ctx.fillStyle = '#fff';
-    let y = canvas.height - bannerHeight - bannerYPad + (padding * 2);
-    wrappedLines.forEach(lineObj => {
+    let y = height - bannerHeight - bannerYPad + (padding * 2);
+    for (const lineObj of wrappedLines) {
       ctx.font = lineObj.font;
       ctx.fillText(lineObj.text, bannerX + padding, y);
       y += lineObj.lineHeight;
-    });
-    // Show in popup
-    const imageURL = canvas.toDataURL('image/png');
-    capturedImage.src = imageURL;
-    downloadLink.href = imageURL;
-    imagePopup.classList.remove('hidden');
+    }
   };
-  // Prevent drawing text before icon loads
-  if (!iconImg.complete) return;
-  setVideoMirror(currentFacingMode); // Restore mirror after capture
-});
+  if (iconImg.complete) iconImg.onload();
+}
 
-// Download link is handled by href
-downloadLink.addEventListener('click', () => {
-  if (!capturedImage.src) return;
+function getCanvasDataUrl() {
+  return canvas.toDataURL('image/png');
+}
+
+downloadBtn.addEventListener('click', () => {
+  const url = getCanvasDataUrl();
   const a = document.createElement('a');
-  a.href = capturedImage.src;
+  a.href = url;
   a.download = 'capture.png';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
 });
 
-// Share Button
 shareBtn.addEventListener('click', async () => {
-  if (navigator.canShare && capturedImage.src) {
-    const res = await fetch(capturedImage.src);
+  if (navigator.canShare) {
+    const url = getCanvasDataUrl();
+    const res = await fetch(url);
     const blob = await res.blob();
     const file = new File([blob], 'capture.png', { type: 'image/png' });
     try {
-      await navigator.share({ files: [file], title: 'Captured Image', text: 'Shared from GPS Camera App' });
+      await navigator.share({ files: [file], title: 'Captured Image', text: 'Shared from GPS Map Camera' });
     } catch (e) {
       alert('Share cancelled or failed.');
     }
@@ -241,36 +197,9 @@ shareBtn.addEventListener('click', async () => {
   }
 });
 
-// Settings Popup
-settingsBtn.addEventListener('click', () => {
-  // Backup current values
-  settingsBackup = {
-    address1: addressLine1Input.value,
-    address2: addressLine2Input.value,
-    latitude: latitudeInput.value,
-    longitude: longitudeInput.value,
-    datetime: datetimeInput.value
-  };
-  updatePresetsDropdown();
-  settingsPopup.classList.remove('hidden');
-});
-closeSettings.addEventListener('click', () => {
-  settingsPopup.classList.add('hidden');
-});
-closeImage.addEventListener('click', () => {
-  imagePopup.classList.add('hidden');
-});
-
-flipCameraBtn.addEventListener('click', () => {
-  currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-  startCamera(currentFacingMode);
-});
-
 locationPresets.addEventListener('change', () => {
   const idx = locationPresets.value;
-  if (idx !== '' && locationPresetsList[idx]) {
-    applyPresetToFields(locationPresetsList[idx]);
-  }
+  if (idx !== '' && locationPresetsList[idx]) applyPresetToFields(locationPresetsList[idx]);
 });
 
 addPresetBtn.addEventListener('click', () => {
@@ -286,40 +215,4 @@ addPresetBtn.addEventListener('click', () => {
   updatePresetsDropdown();
 });
 
-saveSettingsBtn.addEventListener('click', () => {
-  addl1 = addressLine1Input.value;
-  addl2 = addressLine2Input.value;
-  lat = latitudeInput.value;
-  lng = longitudeInput.value;
-  settingsPopup.classList.add('hidden');
-});
-
-cancelSettingsBtn.addEventListener('click', () => {
-  // Revert to backup
-  addressLine1Input.value = settingsBackup.address1;
-  addressLine2Input.value = settingsBackup.address2;
-  latitudeInput.value = settingsBackup.latitude;
-  longitudeInput.value = settingsBackup.longitude;
-  datetimeInput.value = settingsBackup.datetime;
-  settingsPopup.classList.add('hidden');
-});
-
-// Video orientation and resolution update
-video.addEventListener('loadedmetadata', updateVideoResolutionLabel);
-window.addEventListener('resize', updateVideoResolutionLabel);
-
-// Flip video preview for selfie (user) only
-function setVideoMirror(facingMode) {
-  if (facingMode === 'user') {
-    video.style.transform = 'scaleX(-1)';
-  } else {
-    video.style.transform = '';
-  }
-}
-
-// On load, update presets and video label
 updatePresetsDropdown();
-updateVideoResolutionLabel();
-
-// Replace initial camera start with function call
-startCamera(currentFacingMode);
