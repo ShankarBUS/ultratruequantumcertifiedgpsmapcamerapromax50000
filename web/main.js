@@ -8,13 +8,14 @@ const latitudeInput = document.getElementById('latitude');
 const longitudeInput = document.getElementById('longitude');
 const datetimeInput = document.getElementById('datetime');
 const locationPresets = document.getElementById('locationPresets');
-const addPresetBtn = document.getElementById('addPresetBtn');
+const savePresetBtn = document.getElementById('savePresetBtn');
 const fileInput = document.getElementById('fileInput');
 const generateBtn = document.getElementById('generateBtn');
 
 let addl1 = 'Place, State, Country', addl2 = 'Place, City Pin, State, Country';
 let locationPresetsList = JSON.parse(localStorage.getItem('locationPresetsList') || '[]');
 let lastImage = null;
+const outputImageName = 'Authentic GPS Tagged Photo.png';
 
 function wrapText(ctx, text, maxWidth) {
   const words = text.split(' ');
@@ -49,11 +50,11 @@ function drawRoundedRect(ctx, x, y, width, height, r) {
 
 function getBannerLines(ctx, address1, address2, latVal, lngVal, dateStr, timeStr, tz, maxTextWidth, w) {
   const address1Font = `${Math.round(w * 0.03)}px Roboto`;
-  const normalFont = `${Math.round(w * 0.02)}px Roboto`;
+  const normalFont = `${Math.round(w * 0.018)}px Roboto`;
   const lineHeight = Math.round(w * 0.025);
   let wrappedLines = [];
   ctx.font = address1Font;
-  wrappedLines = wrappedLines.concat(wrapText(ctx, address1, maxTextWidth).map(line => ({ text: line, font: address1Font, lineHeight: lineHeight * 1.5 })));
+  wrappedLines = wrappedLines.concat(wrapText(ctx, address1, maxTextWidth).map(line => ({ text: line, font: address1Font, lineHeight: lineHeight * 1.2 })));
   ctx.font = normalFont;
   [address2, `Lat ${latVal}°, Long ${lngVal}°`, `${dateStr} ${timeStr} ${tz}`].forEach(line => {
     wrappedLines = wrappedLines.concat(wrapText(ctx, line, maxTextWidth).map(l => ({ text: l, font: normalFont, lineHeight: lineHeight })));
@@ -66,12 +67,12 @@ function getBannerHeight(wrappedLines, padding) {
 }
 
 function updatePresetsDropdown() {
-  locationPresets.innerHTML = '<option value="">-- Select a preset --</option>';
+  locationPresets.innerHTML = '<option value="">Select a preset location</option>';
   for (let idx = 0; idx < locationPresetsList.length; idx++) {
     const preset = locationPresetsList[idx];
     const opt = document.createElement('option');
     opt.value = idx;
-    opt.textContent = preset.name || `${preset.address1}, ${preset.address2}`;
+    opt.textContent = preset.name;
     locationPresets.appendChild(opt);
   }
 }
@@ -87,12 +88,15 @@ fileInput.addEventListener('change', (event) => {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
     const img = new Image();
-    img.onload = function() {
+    img.onload = function () {
       lastImage = img;
       canvas.width = img.width;
       canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(lastImage, 0, 0, canvas.width, canvas.height);
+      generateBtn.disabled = false;
     };
     img.src = e.target.result;
   };
@@ -106,6 +110,8 @@ generateBtn.addEventListener('click', () => {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(lastImage, 0, 0, canvas.width, canvas.height);
   drawOverlay(ctx, canvas.width, canvas.height);
+  if (downloadBtn) downloadBtn.disabled = false;
+  if (shareBtn) shareBtn.disabled = false;
 });
 
 function drawOverlay(ctx, width, height) {
@@ -134,7 +140,7 @@ function drawOverlay(ctx, width, height) {
   const bannerRadius = padding / 2;
   const bannerY = height - bannerHeight - (bannerYPad * 1.5);
   drawRoundedRect(ctx, bannerX, bannerY, bannerWidth, bannerHeight + (bannerYPad / 2), { tl: bannerRadius, tr: 0, br: bannerRadius, bl: bannerRadius });
-  
+
   const appBannerFont = `${Math.round(width * 0.015)}px Roboto Black`;
   const topBannerHeight = Math.round(width * 0.044);
   // Calculate topBannerWidth based on app name width
@@ -149,8 +155,8 @@ function drawOverlay(ctx, width, height) {
   const topBannerRadius = padding / 4;
   drawRoundedRect(ctx, topBannerX, topBannerY, topBannerWidth, topBannerHeight, { tl: topBannerRadius, tr: topBannerRadius, br: 0, bl: 0 });
   const iconImg = new Image();
-  iconImg.src = 'UTQCGPSMCPM5k.png';
-  iconImg.onload = function() {
+  iconImg.src = 'icon.png';
+  iconImg.onload = function () {
     ctx.drawImage(iconImg, topBannerX + iconPadding, topBannerY + iconPadding, iconHeight, iconHeight);
     ctx.font = appBannerFont;
     ctx.fillStyle = '#fff';
@@ -175,7 +181,7 @@ downloadBtn.addEventListener('click', () => {
   const url = getCanvasDataUrl();
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'capture.png';
+  a.download = outputImageName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -186,9 +192,9 @@ shareBtn.addEventListener('click', async () => {
     const url = getCanvasDataUrl();
     const res = await fetch(url);
     const blob = await res.blob();
-    const file = new File([blob], 'capture.png', { type: 'image/png' });
+    const file = new File([blob], outputImageName, { type: 'image/png' });
     try {
-      await navigator.share({ files: [file], title: 'Captured Image', text: 'Shared from GPS Map Camera' });
+      await navigator.share({ files: [file], title: outputImageName, text: 'Shared from GPS Map Camera' });
     } catch (e) {
       alert('Share cancelled or failed.');
     }
@@ -202,7 +208,7 @@ locationPresets.addEventListener('change', () => {
   if (idx !== '' && locationPresetsList[idx]) applyPresetToFields(locationPresetsList[idx]);
 });
 
-addPresetBtn.addEventListener('click', () => {
+savePresetBtn.addEventListener('click', () => {
   const preset = {
     name: `${addressLine1Input.value} | ${addressLine2Input.value}`,
     address1: addressLine1Input.value,
@@ -214,5 +220,44 @@ addPresetBtn.addEventListener('click', () => {
   localStorage.setItem('locationPresetsList', JSON.stringify(locationPresetsList));
   updatePresetsDropdown();
 });
+
+const settingsPopup = document.getElementById('settingsPopup');
+const settingsBtn = document.getElementById('settingsBtn');
+const closeSettingsBtn = document.getElementById('closeSettingsPopupBtn');
+
+function openSettingsPopup() {
+  settingsPopup.style.display = 'flex';
+}
+function closeSettingsPopup() {
+  settingsPopup.style.display = 'none';
+}
+
+settingsBtn.addEventListener('click', openSettingsPopup);
+closeSettingsBtn.addEventListener('click', closeSettingsPopup);
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSettingsPopup();
+});
+
+const aboutPopup = document.getElementById('aboutPopup');
+const aboutBtn = document.getElementById('aboutBtn');
+const closeAboutBtn = document.getElementById('closeAboutPopupBtn');
+
+function openAboutPopup() {
+  aboutPopup.style.display = 'flex';
+}
+function closeAboutPopup() {
+  aboutPopup.style.display = 'none';
+}
+
+aboutBtn.addEventListener('click', openAboutPopup);
+closeAboutBtn.addEventListener('click', closeAboutPopup);
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeAboutPopup();
+});
+
+const fileInputBtn = document.getElementById('fileInputBtn');
+fileInputBtn.addEventListener('click', () => fileInput.click());
 
 updatePresetsDropdown();
