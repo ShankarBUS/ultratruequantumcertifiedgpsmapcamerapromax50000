@@ -187,25 +187,29 @@ select:focus {
   margin: 0;
 }
 
-.save-button {
-  width: 100%;
+.input-row {
   display: flex;
-  justify-content: center;
+  flex-direction: row;
   align-items: center;
-  gap: 8px;
-  border: 1px none transparent;
-  background-color: var(--button-bg);
+  gap: 12px;
 }
 
-.save-button:hover {
-  border: 1px solid var(--primary);
+.map-image-preview {
+  width: 64px;
+  height: auto;
+  display: none;
 }
 
-.save-button:active {
-  background-color: var(--button-active);
+.map-button {
+  display: flex;
+  min-height: 32px;
+  min-width: 32px;
+  align-items: center;
+  gap: 4px;
+  width: unset;
+  height: unset;
 }
 
-/* Hide file input visually but keep accessible */
-#fileInput {
+input[type="file"] {
   display: none;
 }

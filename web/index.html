@@ -88,13 +88,28 @@
       <label for="longitude">Longitude</label>
       <input id="longitude" type="number" step="any" placeholder="Longitude" autocomplete="off" />
 
-      <button id="savePresetBtn" class="action-button add-button" title="Save Location">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M3 5C3 3.89543 3.89543 3 5 3H13.3787C13.9091 3 14.4178 3.21071 14.7929 3.58579L16.4142 5.20711C16.7893 5.58218 17 6.09089 17 6.62132V15C17 16.1046 16.1046 17 15 17H5C3.89543 17 3 16.1046 3 15V5ZM5 4C4.44772 4 4 4.44772 4 5V15C4 15.5523 4.44772 16 5 16L5 11.5C5 10.6716 5.67157 10 6.5 10H13.5C14.3284 10 15 10.6716 15 11.5V16C15.5523 16 16 15.5523 16 15V6.62132C16 6.3561 15.8946 6.10175 15.7071 5.91421L14.0858 4.29289C13.8983 4.10536 13.6439 4 13.3787 4L13 4V6.5C13 7.32843 12.3284 8 11.5 8L7.5 8C6.67157 8 6 7.32843 6 6.5L6 4H5ZM7 4L7 6.5C7 6.77614 7.22386 7 7.5 7L11.5 7C11.7761 7 12 6.77614 12 6.5V4L7 4ZM14 16V11.5C14 11.2239 13.7761 11 13.5 11H6.5C6.22386 11 6 11.2239 6 11.5V16H14Z"
-            fill="#fff" />
-        </svg>
-      </button>
+      <div class="input-row">
+        <label for="savePresetBtn">Save Location</label>
+        <button id="savePresetBtn" class="action-button" title="Save Location">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M3 5C3 3.89543 3.89543 3 5 3H13.3787C13.9091 3 14.4178 3.21071 14.7929 3.58579L16.4142 5.20711C16.7893 5.58218 17 6.09089 17 6.62132V15C17 16.1046 16.1046 17 15 17H5C3.89543 17 3 16.1046 3 15V5ZM5 4C4.44772 4 4 4.44772 4 5V15C4 15.5523 4.44772 16 5 16L5 11.5C5 10.6716 5.67157 10 6.5 10H13.5C14.3284 10 15 10.6716 15 11.5V16C15.5523 16 16 15.5523 16 15V6.62132C16 6.3561 15.8946 6.10175 15.7071 5.91421L14.0858 4.29289C13.8983 4.10536 13.6439 4 13.3787 4L13 4V6.5C13 7.32843 12.3284 8 11.5 8L7.5 8C6.67157 8 6 7.32843 6 6.5L6 4H5ZM7 4L7 6.5C7 6.77614 7.22386 7 7.5 7L11.5 7C11.7761 7 12 6.77614 12 6.5V4L7 4ZM14 16V11.5C14 11.2239 13.7761 11 13.5 11H6.5C6.22386 11 6 11.2239 6 11.5V16H14Z"
+              fill="#fff" />
+          </svg>
+        </button>
+      </div>
+      <div class="input-row">
+        <input type="file" id="mapInput" accept="image/*" />
+        <label for="mapInputBtn">Upload Map</label>
+        <button id="mapInputBtn" class="action-button map-button" title="Upload Map">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M17.73 3.057A.5.5 0 0 1 18 3.5V13a.5.5 0 0 1-.213.41l-5 3.5a.5.5 0 0 1-.574 0L7.5 13.61l-4.713 3.3A.5.5 0 0 1 2 16.5V7a.5.5 0 0 1 .213-.41l5-3.5a.5.5 0 0 1 .574 0l4.713 3.3l4.713-3.3a.5.5 0 0 1 .518-.033M12 7.26l-4-2.8v8.28l4 2.8zm1 8.28l4-2.8V4.46l-4 2.8zm-6-2.8V4.46l-4 2.8v8.28z"
+              fill="#fff" />
+          </svg>
+          <img id="mapImagePreview" class="map-image-preview" src="" alt="Map Preview" />
+        </button>
+      </div>
     </div>
   </div>
 
